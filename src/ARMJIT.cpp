@@ -561,8 +561,7 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
         }
 
         // some memory has been remapped
-        RetireJitBlock(existingBlockIt->second);
-        map.erase(existingBlockIt);
+        InvalidateByAddr(otherLocalAddr);
     }
 
     FetchedInstr instrs[MaxBlockSize];
@@ -852,7 +851,9 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
         prevBlock = prevBlockIt->second;
         RestoreCandidates.erase(prevBlockIt);
 
-        mayRestore = prevBlock->StartAddr == blockAddr && prevBlock->LiteralHash == literalHash;
+        mayRestore = prevBlock->Num == cpu->Num
+            && prevBlock->StartAddr == blockAddr
+            && prevBlock->LiteralHash == literalHash;
 
         if (mayRestore && prevBlock->NumAddresses == numAddressRanges)
         {
