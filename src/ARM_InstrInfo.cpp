@@ -379,7 +379,8 @@ Info Decode(bool thumb, u32 num, u32 instr, bool literaloptimizations)
         if (data & T_SetC)
             res.WriteFlags |= flag_C;
 
-        if (data & T_WriteMem)
+        res.WritesMemory = data & T_WriteMem;
+        if (res.WritesMemory)
             res.SpecialKind = special_WriteMem;
 
         if (data & T_LoadMem)
@@ -520,7 +521,8 @@ Info Decode(bool thumb, u32 num, u32 instr, bool literaloptimizations)
             || ((data & A_SetCImm) && ((instr >> 7) & 0x1E)))
             res.WriteFlags |= flag_C;
 
-        if (data & A_WriteMem)
+        res.WritesMemory = data & A_WriteMem;
+        if (res.WritesMemory)
             res.SpecialKind = special_WriteMem;
 
         if (data & A_LoadMem)

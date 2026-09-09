@@ -69,6 +69,7 @@ struct FetchedInstr
     u8 DataCycles;
     u16 CodeCycles;
     u32 DataRegion;
+    bool MayFoldLiteral;
 
     ARMInstrInfo::Info Info;
 };

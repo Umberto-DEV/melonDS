@@ -362,7 +362,7 @@ bool IsIdleLoop(bool thumb, FetchedInstr* instrs, int instrsCount)
     for (int i = 0; i < instrsCount; i++)
     {
         JIT_DEBUGPRINT("instr %d %08x regs(%x %x) %x %x\n", i, instrs[i].Instr, instrs[i].Info.DstRegs, instrs[i].Info.SrcRegs, regsWrittenTo, regsDisallowedToWrite);
-        if (instrs[i].Info.SpecialKind == ARMInstrInfo::special_WriteMem)
+        if (instrs[i].Info.WritesMemory)
             return false;
         if (!thumb && instrs[i].Info.Kind >= ARMInstrInfo::ak_MSR_IMM && instrs[i].Info.Kind <= ARMInstrInfo::ak_MRC)
             return false;
@@ -581,9 +581,6 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
     // due to instruction merging i might not reflect the amount of actual instructions
     u32 numInstrs = 0;
 
-    u32 writeAddrs[MaxBlockSize];
-    u32 numWriteAddrs = 0, writeAddrsTranslated = 0;
-
     cpu->FillPipeline();
     u32 nextInstr[2] = {cpu->NextInstr[0], cpu->NextInstr[1]};
     u32 nextInstrAddr[2] = {blockAddr, r15};
@@ -595,6 +592,7 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
     bool hasLink = false;
 
     bool hasMemoryInstr = false;
+    bool blockMayWrite = false;
 
     do
     {
@@ -602,6 +600,7 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
 
         instrs[i].BranchFlags = 0;
         instrs[i].SetFlags = 0;
+        instrs[i].MayFoldLiteral = false;
         instrs[i].Instr = nextInstr[0];
         nextInstr[0] = nextInstr[1];
 
@@ -657,6 +656,7 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
             instrs[i].CodeCycles = cpu->CodeCycles;
         }
         instrs[i].Info = ARMInstrInfo::Decode(thumb, cpu->Num, instrs[i].Instr, LiteralOptimizations);
+        blockMayWrite |= instrs[i].Info.WritesMemory;
 
         hasMemoryInstr |= thumb
             ? (instrs[i].Info.Kind >= ARMInstrInfo::tk_LDR_PCREL && instrs[i].Info.Kind <= ARMInstrInfo::tk_STMIA)
@@ -709,7 +709,7 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
             {
                 Log(LogLevel::Warn,"literal in non executable memory?\n");
             }
-            if (InvalidLiterals.Find(translatedAddr) == -1)
+            else if (InvalidLiterals.Find(translatedAddr) == -1)
             {
                 u32 translatedAddrRounded = translatedAddr & ~0x1FF;
 
@@ -723,10 +723,9 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
                 JIT_DEBUGPRINT("literal loading %08x %08x %08x %08x\n", literalAddr, translatedAddr, addressMasks[j], addressRanges[j]);
                 cpu->DataRead32(literalAddr, &literalValues[numLiterals]);
                 literalLoadAddrs[numLiterals++] = translatedAddr;
+                instrs[i].MayFoldLiteral = true;
             }
         }
-        else if (instrs[i].Info.SpecialKind == ARMInstrInfo::special_WriteMem)
-            writeAddrs[numWriteAddrs++] = instrs[i].DataRegion;
         else if (thumb && instrs[i].Info.Kind == ARMInstrInfo::tk_BL_LONG_2 && i > 0
             && instrs[i - 1].Info.Kind == ARMInstrInfo::tk_BL_LONG_1)
         {
@@ -820,24 +819,10 @@ void ARMJIT::CompileBlock(ARM* cpu) noexcept
             FloodFillSetFlags(instrs, i - 2, !secondaryFlagReadCond ? instrs[i - 1].Info.ReadFlags : 0xF);
     } while(!instrs[i - 1].Info.EndBlock && i < MaxBlockSize && !cpu->Halted && (!cpu->IRQ || (cpu->CPSR & 0x80)));
 
-    if (numLiterals)
+    if (blockMayWrite)
     {
-        for (u32 j = 0; j < numWriteAddrs; j++)
-        {
-            u32 translatedAddr = LocaliseCodeAddress(cpu->Num, writeAddrs[j]);
-            if (translatedAddr)
-            {
-                for (u32 k = 0; k < numLiterals; k++)
-                {
-                    if (literalLoadAddrs[k] == translatedAddr)
-                    {
-                        if (InvalidLiterals.Find(translatedAddr) == -1)
-                            InvalidLiterals.Add(translatedAddr);
-                        break;
-                    }
-                }
-            }
-        }
+        for (int j = 0; j < i; j++)
+            instrs[j].MayFoldLiteral = false;
     }
 
     u32 literalHash = (u32)XXH3_64bits(literalValues, numLiterals * 4);

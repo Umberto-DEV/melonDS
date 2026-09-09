@@ -267,6 +267,7 @@ struct Info
     // upper 4 bits - might set flag
     u8 WriteFlags;
 
+    bool WritesMemory;
     bool EndBlock;
     bool Branches() const
     {
