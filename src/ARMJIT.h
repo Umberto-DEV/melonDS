@@ -49,6 +49,7 @@ public:
     void InvalidateByAddr(u32) noexcept;
     void CheckAndInvalidateWVRAM(int) noexcept;
     void CheckAndInvalidateITCM() noexcept;
+    void CheckAndInvalidateSWRAM(bool invalidateARM7WRAM) noexcept;
     void Reset() noexcept;
     void JitEnableWrite() noexcept;
     void JitEnableExecute() noexcept;
@@ -189,6 +190,7 @@ public:
     void InvalidateByAddr(u32) noexcept {}
     void CheckAndInvalidateWVRAM(int) noexcept {}
     void CheckAndInvalidateITCM() noexcept {}
+    void CheckAndInvalidateSWRAM(bool) noexcept {}
     void Reset() noexcept {}
     void JitEnableWrite() noexcept {}
     void JitEnableExecute() noexcept {}
@@ -203,4 +205,3 @@ public:
 #endif // JIT_ENABLED
 
 #endif // ARMJIT_H
-

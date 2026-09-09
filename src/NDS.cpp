@@ -1296,6 +1296,11 @@ void NDS::MapSharedWRAM(u8 val)
     if (val == WRAMCnt)
         return;
 
+    JIT.CheckAndInvalidateSWRAM((WRAMCnt & 0x3) == 0 || (val & 0x3) == 0);
+#ifdef JIT_ENABLED
+    ARM9.FastBlockLookupSize = 0;
+    ARM7.FastBlockLookupSize = 0;
+#endif
     JIT.Memory.RemapSWRAM();
 
     WRAMCnt = val;

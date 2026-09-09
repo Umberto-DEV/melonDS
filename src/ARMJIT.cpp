@@ -1032,6 +1032,36 @@ void ARMJIT::CheckAndInvalidateITCM() noexcept
     }
 }
 
+void ARMJIT::CheckAndInvalidateSWRAM(bool invalidateARM7WRAM) noexcept
+{
+    for (u32 i = 0; i < SharedWRAMSize; i += 512)
+    {
+        if (CodeIndexSWRAM[i / 512].Code)
+        {
+            for (u32 j = 0; j < 512; j += 16)
+            {
+                if (CodeIndexSWRAM[i / 512].Code & (1 << ((j & 0x1FF) / 16)))
+                    InvalidateByAddr((i + j) | (ARMJIT_Memory::memregion_SharedWRAM << 27));
+            }
+        }
+    }
+
+    if (!invalidateARM7WRAM)
+        return;
+
+    for (u32 i = 0; i < ARM7WRAMSize; i += 512)
+    {
+        if (CodeIndexARM7WRAM[i / 512].Code)
+        {
+            for (u32 j = 0; j < 512; j += 16)
+            {
+                if (CodeIndexARM7WRAM[i / 512].Code & (1 << ((j & 0x1FF) / 16)))
+                    InvalidateByAddr((i + j) | (ARMJIT_Memory::memregion_WRAM7 << 27));
+            }
+        }
+    }
+}
+
 void ARMJIT::CheckAndInvalidateWVRAM(int bank) noexcept
 {
     u32 start = bank == 1 ? 0x20000 : 0;
