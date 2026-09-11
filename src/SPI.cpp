@@ -135,7 +135,7 @@ void FirmwareMem::SetupDirectBoot()
     {
         // The ARMWrite methods are virtual, they'll delegate to DSi if necessary
         for (u32 i = 0; i < 6; i += 2)
-            NDS.ARM9Write16(0x02FFFCF4, *(u16*)&header.MacAddr[i]); // MAC address
+            NDS.ARM9Write16(0x02FFFCF4+i, *(u16*)&header.MacAddr[i]); // MAC address
 
         // checkme
         NDS.ARM9Write16(0x02FFFCFA, header.EnabledChannels); // enabled channels
