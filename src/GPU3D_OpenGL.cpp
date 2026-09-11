@@ -756,17 +756,20 @@ void GLRenderer3D::BuildPolygons(GLRenderer3D::RendererPolygon* polygons, int np
         rp->EdgeIndicesOffset = eidx;
         rp->NumEdgeIndices = 0;
 
-        u32 vidx_cur = vidx_first;
-        for (u32 j = 1; j < poly->NumVertices; j++)
+        if (EdgeMarkingImplemented)
         {
+            u32 vidx_cur = vidx_first;
+            for (u32 j = 1; j < poly->NumVertices; j++)
+            {
+                IndexBuffer[eidx++] = vidx_cur;
+                IndexBuffer[eidx++] = vidx_cur + 1;
+                vidx_cur++;
+                rp->NumEdgeIndices += 2;
+            }
             IndexBuffer[eidx++] = vidx_cur;
-            IndexBuffer[eidx++] = vidx_cur + 1;
-            vidx_cur++;
+            IndexBuffer[eidx++] = vidx_first;
             rp->NumEdgeIndices += 2;
         }
-        IndexBuffer[eidx++] = vidx_cur;
-        IndexBuffer[eidx++] = vidx_first;
-        rp->NumEdgeIndices += 2;
     }
 
     NumVertices = vidx;
@@ -939,7 +942,7 @@ void GLRenderer3D::RenderSceneChunk(int y, int h)
 
     // if edge marking is enabled, mark all opaque edges
     // TODO BETTER EDGE MARKING!!! THIS SUCKS
-    /*if (RenderDispCnt & (1<<5))
+    /*if (EdgeMarkingImplemented && (RenderDispCnt & (1<<5)))
     {
         UseRenderShader(flags | RenderFlag_Edge);
         glLineWidth(1.5);
@@ -1477,7 +1480,8 @@ void GLRenderer3D::RenderFrame()
         // bind to access the index buffer
         glBindVertexArray(VertexArrayID);
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, NumIndices * 2, IndexBuffer);
-        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, EdgeIndicesOffset * 2, NumEdgeIndices * 2, IndexBuffer + EdgeIndicesOffset);
+        if (NumEdgeIndices > 0)
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, EdgeIndicesOffset * 2, NumEdgeIndices * 2, IndexBuffer + EdgeIndicesOffset);
 
         RenderSceneChunk(0, 192);
     }
