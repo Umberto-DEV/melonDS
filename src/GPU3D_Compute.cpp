@@ -324,6 +324,13 @@ void ComputeRenderer3D::SetRenderSettings(int scale, bool highResolutionCoordina
 {
     u8 TileScale;
 
+    // Nothing below depends on anything but these two, and rebuilding means
+    // recompiling every shader and reallocating the buffers. The GL renderer
+    // already bails out the same way. ScaleFactor starts at 0, which is not a
+    // valid scale, so the first call always goes through.
+    if (scale == ScaleFactor && highResolutionCoordinates == HiresCoordinates)
+        return;
+
     if (ScaleFactor != -1)
     {
         DeleteShaders();
